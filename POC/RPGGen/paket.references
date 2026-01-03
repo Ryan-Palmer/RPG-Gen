@@ -1,0 +1,5 @@
+FSharp.Core
+Microsoft.Extensions.AI
+Microsoft.Agents.AI.OpenAI
+Newtonsoft.Json
+FSharp.Control.AsyncSeq

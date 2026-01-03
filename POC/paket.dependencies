@@ -1,0 +1,10 @@
+source https://api.nuget.org/v3/index.json
+
+storage: none
+framework: net10.0
+
+nuget FSharp.Core
+nuget Microsoft.Extensions.AI
+nuget Microsoft.Agents.AI.OpenAI
+nuget Newtonsoft.Json
+nuget FSharp.Control.AsyncSeq

@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path="dotnet-tools.json" />
+    <File Path="paket.dependencies" />
+    <File Path="paket.lock" />
+  </Folder>
+  <Project Path="RPGGen/RPGGen.fsproj" />
+</Solution>
