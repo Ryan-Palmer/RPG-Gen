@@ -37,24 +37,24 @@ let game = async {
 
     Console.WriteLine($"{initialScene.Text}\n\nIllustrating...\n")
     
-    let! illustrationDescription = Illustrator.getIllustrationDescription storyThread responseAgent
-    if verbose then Console.WriteLine $"Illustration description:\n\n{illustrationDescription.Text}\n\n"
+    let! initSceneDescription = Illustrator.getSceneDescription storyThread responseAgent
+    if verbose then Console.WriteLine $"Illustration description:\n\n{initSceneDescription.Text}\n\n"
 
     stopwatch.Stop()
-    let initIllustrationDescriptionSeconds = stopwatch.Elapsed.Seconds
-    if verbose then Console.WriteLine($"Illustration description generated in {initIllustrationDescriptionSeconds} seconds\n\n")
+    let initSceneDescriptionSeconds = stopwatch.Elapsed.Seconds
+    if verbose then Console.WriteLine($"Illustration description generated in {initSceneDescriptionSeconds} seconds\n\n")
     stopwatch.Reset()
     stopwatch.Start()
 
     do! unloadResponseAgent ()
 
-    Illustrator.illustrateScene illustrationDescription.Text |> ignore
+    Illustrator.illustrateScene initSceneDescription.Text |> ignore
 
     stopwatch.Stop()
     let initIllustrationSeconds = stopwatch.Elapsed.Seconds
     if verbose then Console.WriteLine($"Illustration generated in {initIllustrationSeconds} seconds\n")
 
-    if verbose then Console.WriteLine($"Total init time {initTurnSeconds + initIllustrationDescriptionSeconds + initIllustrationSeconds} seconds\n\n")
+    if verbose then Console.WriteLine($"Total init time {initTurnSeconds + initSceneDescriptionSeconds + initIllustrationSeconds} seconds\n\n")
 
     while true do
         stopwatch.Reset()
@@ -74,18 +74,18 @@ let game = async {
 
         Console.WriteLine $"{dmResponse.Text}\n\n\nIllustrating...\n"
 
-        let! illustrationDescription = Illustrator.getIllustrationDescription storyThread responseAgent
-        if verbose then Console.WriteLine $"Illustration description:\n\n{illustrationDescription.Text}\n\n"
+        let! sceneDescription = Illustrator.getSceneDescription storyThread responseAgent
+        if verbose then Console.WriteLine $"Illustration description:\n\n{sceneDescription.Text}\n\n"
 
         stopwatch.Stop()
-        let illustrationDescriptionSeconds = stopwatch.Elapsed.Seconds
-        if verbose then Console.WriteLine($"Illustration description generated in {illustrationDescriptionSeconds} seconds\n")
+        let sceneDescriptionSeconds = stopwatch.Elapsed.Seconds
+        if verbose then Console.WriteLine($"Illustration description generated in {sceneDescriptionSeconds} seconds\n")
         stopwatch.Reset()
         stopwatch.Start()
 
         do! unloadResponseAgent ()
 
-        Illustrator.illustrateScene illustrationDescription.Text |> ignore
+        Illustrator.illustrateScene sceneDescription.Text |> ignore
 
         stopwatch.Stop()
         let illustrationSeconds = stopwatch.Elapsed.Seconds
@@ -93,7 +93,7 @@ let game = async {
         stopwatch.Reset()
         stopwatch.Start()
 
-        if verbose then Console.WriteLine($"Total turn time {turnSeconds + illustrationDescriptionSeconds + illustrationSeconds} seconds\n\n")
+        if verbose then Console.WriteLine($"Total turn time {turnSeconds + sceneDescriptionSeconds + illustrationSeconds} seconds\n\n")
 }
 
 game

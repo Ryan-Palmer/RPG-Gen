@@ -271,7 +271,7 @@ let workflowSpec = """
 }
 """
 
-let getIllustrationDescription (thread : AgentThread) (agent : ChatClientAgent) =
+let getSceneDescription (thread : AgentThread) (agent : ChatClientAgent) =
     let threadCopy = 
         thread.Serialize()
         |> agent.DeserializeThread
