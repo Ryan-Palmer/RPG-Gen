@@ -10,7 +10,7 @@ let chatClient = OpenAIClient(ApiKeyCredential("Unused"), OpenAIClientOptions(En
 
 let unloadResponseAgent () = 
     Process.runCliCmd "lms unload --all" |> ignore
-    Async.Sleep(1000) |> Async.RunSynchronously
+    Async.Sleep(1000)
 
 let responseAgent = 
     storyModel
@@ -28,7 +28,7 @@ let game = async {
     let! illustrationDescription = Illustrator.getIllustrationDescription storyThread responseAgent
     //Console.WriteLine $"Illustration description:\n\n{illustrationDescription.Text}\n\n\n"
 
-    unloadResponseAgent ()
+    do! unloadResponseAgent ()
 
     Illustrator.illustrateScene illustrationDescription.Text |> ignore
 
@@ -44,7 +44,7 @@ let game = async {
         let! illustrationDescription = Illustrator.getIllustrationDescription storyThread responseAgent
         //Console.WriteLine $"Illustration description:\n\n{illustrationDescription.Text}\n\n\n"
 
-        unloadResponseAgent ()
+        do! unloadResponseAgent ()
 
         Illustrator.illustrateScene illustrationDescription.Text |> ignore
 }
