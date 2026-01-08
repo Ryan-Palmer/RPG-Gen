@@ -36,7 +36,10 @@ let responseAgent =
     |> _.CreateAIAgent(instructions = "", tools = [||])
 
 let getIllustrationDescription (thread : AgentThread) =
-    responseAgent.RunAsync($"The previous thread details a dungeons and dragons campaign. Describe the current scene such that an image generator can illustrate it to a high level of precision. Don't add any reply or commentary, just the scene description.", thread)
+    let threadCopy = 
+        thread.Serialize()
+        |> responseAgent.DeserializeThread
+    responseAgent.RunAsync($"The previous thread details a dungeons and dragons campaign. Describe the current scene to a high level of precision such that it can be fed directly to an image generator which will illustrate it. It will only have your description to work with, it doesn't have access to the story thread, so include all relevant details. Don't add any reply or commentary, just the scene description.", threadCopy)
     |> Async.AwaitTask
     |> Async.RunSynchronously
 
