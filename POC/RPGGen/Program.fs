@@ -2,77 +2,51 @@
 open OpenAI
 open OpenAI.Responses
 open System.ClientModel
-open ImageGen
-open Microsoft.Agents.AI
-
-let runCliCmd (cmd : string) =
-    let proc = new System.Diagnostics.Process()
-    proc.StartInfo.FileName <- "cmd.exe"
-    proc.StartInfo.Arguments <- $"/C {cmd}"
-    proc.StartInfo.RedirectStandardOutput <- true
-    proc.StartInfo.UseShellExecute <- false
-    proc.StartInfo.CreateNoWindow <- true
-    proc.Start() |> ignore
-    let output = proc.StandardOutput.ReadToEnd()
-    proc.WaitForExit()
-    output
-
-let unloadLLM () = 
-    runCliCmd "lms unload --all" |> ignore
-    Async.Sleep(1000) |> Async.RunSynchronously
 
 let llmServerRoot = "http://localhost:1234/v1"
 let storyModel = "gemma-3-27b-it-qat"
 let llmServer = Uri llmServerRoot
+let chatClient = OpenAIClient(ApiKeyCredential("Unused"), OpenAIClientOptions(Endpoint = llmServer))
 
-Console.WriteLine("RPGGen initialising...\n\n")
+let unloadResponseAgent () = 
+    Process.runCliCmd "lms unload --all" |> ignore
+    Async.Sleep(1000) |> Async.RunSynchronously
 
-let clientOptions = OpenAIClientOptions(Endpoint = llmServer)
-let credential = ApiKeyCredential("Unused")
-let chatClient = OpenAIClient(credential, clientOptions)
 let responseAgent = 
     storyModel
     |> chatClient.GetResponsesClient
     |> _.CreateAIAgent(instructions = "", tools = [||])
 
-let getIllustrationDescription (thread : AgentThread) =
-    let threadCopy = 
-        thread.Serialize()
-        |> responseAgent.DeserializeThread
-    responseAgent.RunAsync($"The previous thread details a dungeons and dragons campaign. Describe the current scene to a high level of precision such that it can be fed directly to an image generator which will illustrate it. It will only have your description to work with, it doesn't have access to the story thread, so include all relevant details. Don't add any reply or commentary, just the scene description.", threadCopy)
-    |> Async.AwaitTask
-    |> Async.RunSynchronously
+Console.WriteLine("RPGGen initialising...\n\n")
 
 let storyThread = responseAgent.GetNewThread()
-
-let initPrompt = "Describe a classic scene from Dungeons and Dragons as if you are the dungeon master talking to the players. Don't describe your personal actions, just your words as the dungeon master."
 let initialScene = 
-    responseAgent.RunAsync(initPrompt, storyThread)
-    |> Async.AwaitTask
+    DungeonMaster.getInitialScene storyThread responseAgent
     |> Async.RunSynchronously
 
 Console.Write($"{initialScene.Text}\n\nIllustrating...\n\n")
-let illustrationDescription = getIllustrationDescription storyThread 
+
+let illustrationDescription = Illustrator.getIllustrationDescription storyThread responseAgent |> Async.RunSynchronously
 //Console.WriteLine $"Illustration description:\n\n{illustrationDescription.Text}\n\n\n"
 
-unloadLLM ()
-illustrateScene illustrationDescription.Text |> ignore
+unloadResponseAgent ()
+
+Illustrator.illustrateScene illustrationDescription.Text |> ignore
 
 while true do
     Console.Write("Enter the players' action:\n\n")
     let userAction = Console.ReadLine()
 
     Console.Write("\n\nGenerating...\n\n\n")
-    let dmResponse = 
-        responseAgent.RunAsync($"The players take the following action: {userAction}\n\nAs the dungeon master, describe what happens next. Don't describe your personal actions, just your words as the dungeon master.", storyThread)
-        |> Async.AwaitTask
-        |> Async.RunSynchronously
+    let dmResponse = DungeonMaster.takeTurn storyThread responseAgent userAction |> Async.RunSynchronously
 
     Console.WriteLine $"{dmResponse.Text}\n\n\nIllustrating...\n\n\n"
-    let illustrationDescription = getIllustrationDescription storyThread 
+
+    let illustrationDescription = Illustrator.getIllustrationDescription storyThread responseAgent |> Async.RunSynchronously
     //Console.WriteLine $"Illustration description:\n\n{illustrationDescription.Text}\n\n\n"
 
-    unloadLLM ()
-    illustrateScene illustrationDescription.Text |> ignore
+    unloadResponseAgent ()
+
+    Illustrator.illustrateScene illustrationDescription.Text |> ignore
 
 

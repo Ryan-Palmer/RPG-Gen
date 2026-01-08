@@ -1,4 +1,4 @@
-module ImageGen
+module Illustrator
 
 open System
 open System.Net.Http
@@ -10,6 +10,7 @@ open Newtonsoft.Json.Linq
 open FSharp.Control
 open System.IO
 open System.Diagnostics
+open Microsoft.Agents.AI
 
 let serverAddress = "127.0.0.1:8000"
 let clientId = Guid.NewGuid().ToString()
@@ -269,6 +270,13 @@ let workflowSpec = """
   }
 }
 """
+
+let getIllustrationDescription (thread : AgentThread) (agent : ChatClientAgent) =
+    let threadCopy = 
+        thread.Serialize()
+        |> agent.DeserializeThread
+    agent.RunAsync($"The previous thread details a dungeons and dragons campaign. Describe the current scene to a high level of precision such that it can be fed directly to an image generator which will illustrate it. It will only have your description to work with, it doesn't have access to the story thread, so include all relevant details. Don't add any reply or commentary, just the scene description.", threadCopy)
+    |> Async.AwaitTask
 
 let illustrateScene (scenePrompt: string) =
     let bytes = 
