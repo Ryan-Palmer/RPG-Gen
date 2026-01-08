@@ -46,16 +46,14 @@ let getIllustrationDescription (thread : AgentThread) =
 let storyThread = responseAgent.GetNewThread()
 
 let initPrompt = "Describe a classic scene from Dungeons and Dragons as if you are the dungeon master talking to the players. Don't describe your personal actions, just your words as the dungeon master."
-
 let initialScene = 
     responseAgent.RunAsync(initPrompt, storyThread)
     |> Async.AwaitTask
     |> Async.RunSynchronously
 
 Console.Write($"{initialScene.Text}\n\nIllustrating...\n\n")
-
 let illustrationDescription = getIllustrationDescription storyThread 
-Console.WriteLine $"Illustration description:\n\n{illustrationDescription.Text}\n\n\n"
+//Console.WriteLine $"Illustration description:\n\n{illustrationDescription.Text}\n\n\n"
 
 unloadLLM ()
 illustrateScene illustrationDescription.Text |> ignore
@@ -63,14 +61,17 @@ illustrateScene illustrationDescription.Text |> ignore
 while true do
     Console.Write("Enter the players' action:\n\n")
     let userAction = Console.ReadLine()
+
     Console.Write("\n\nGenerating...\n\n\n")
     let dmResponse = 
-        responseAgent.RunAsync($"The players take the following action: {userAction}\n\nAs the dungeon master, describe what happens next.", storyThread)
+        responseAgent.RunAsync($"The players take the following action: {userAction}\n\nAs the dungeon master, describe what happens next. Don't describe your personal actions, just your words as the dungeon master.", storyThread)
         |> Async.AwaitTask
         |> Async.RunSynchronously
+
     Console.WriteLine $"{dmResponse.Text}\n\n\nIllustrating...\n\n\n"
     let illustrationDescription = getIllustrationDescription storyThread 
-    Console.WriteLine $"Illustration description:\n\n{illustrationDescription.Text}\n\n\n"
+    //Console.WriteLine $"Illustration description:\n\n{illustrationDescription.Text}\n\n\n"
+
     unloadLLM ()
     illustrateScene illustrationDescription.Text |> ignore
 
