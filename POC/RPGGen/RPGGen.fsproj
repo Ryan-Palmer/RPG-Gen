@@ -5,6 +5,7 @@
     <TargetFramework>net10.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="Process.fs" />
     <None Include="paket.references" />
     <Compile Include="Illustrator.fs" />
     <Compile Include="DungeonMaster.fs" />

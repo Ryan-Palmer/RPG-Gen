@@ -17,36 +17,37 @@ let responseAgent =
     |> chatClient.GetResponsesClient
     |> _.CreateAIAgent(instructions = "", tools = [||])
 
-Console.WriteLine("RPGGen initialising...\n\n")
+let game = async {
+    Console.WriteLine("RPGGen initialising...\n\n")
+    
+    let storyThread = responseAgent.GetNewThread()
+    let! initialScene = DungeonMaster.getInitialScene storyThread responseAgent
 
-let storyThread = responseAgent.GetNewThread()
-let initialScene = 
-    DungeonMaster.getInitialScene storyThread responseAgent
-    |> Async.RunSynchronously
+    Console.Write($"{initialScene.Text}\n\nIllustrating...\n\n")
 
-Console.Write($"{initialScene.Text}\n\nIllustrating...\n\n")
-
-let illustrationDescription = Illustrator.getIllustrationDescription storyThread responseAgent |> Async.RunSynchronously
-//Console.WriteLine $"Illustration description:\n\n{illustrationDescription.Text}\n\n\n"
-
-unloadResponseAgent ()
-
-Illustrator.illustrateScene illustrationDescription.Text |> ignore
-
-while true do
-    Console.Write("Enter the players' action:\n\n")
-    let userAction = Console.ReadLine()
-
-    Console.Write("\n\nGenerating...\n\n\n")
-    let dmResponse = DungeonMaster.takeTurn storyThread responseAgent userAction |> Async.RunSynchronously
-
-    Console.WriteLine $"{dmResponse.Text}\n\n\nIllustrating...\n\n\n"
-
-    let illustrationDescription = Illustrator.getIllustrationDescription storyThread responseAgent |> Async.RunSynchronously
+    let! illustrationDescription = Illustrator.getIllustrationDescription storyThread responseAgent
     //Console.WriteLine $"Illustration description:\n\n{illustrationDescription.Text}\n\n\n"
 
     unloadResponseAgent ()
 
     Illustrator.illustrateScene illustrationDescription.Text |> ignore
 
+    while true do
+        Console.Write("Enter the players' action:\n\n")
+        let userAction = Console.ReadLine()
 
+        Console.Write("\n\nGenerating...\n\n\n")
+        let! dmResponse = DungeonMaster.takeTurn storyThread responseAgent userAction
+
+        Console.WriteLine $"{dmResponse.Text}\n\n\nIllustrating...\n\n\n"
+
+        let! illustrationDescription = Illustrator.getIllustrationDescription storyThread responseAgent
+        //Console.WriteLine $"Illustration description:\n\n{illustrationDescription.Text}\n\n\n"
+
+        unloadResponseAgent ()
+
+        Illustrator.illustrateScene illustrationDescription.Text |> ignore
+}
+
+game
+ |> Async.RunSynchronously
