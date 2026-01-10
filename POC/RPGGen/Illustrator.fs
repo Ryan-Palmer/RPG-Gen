@@ -61,18 +61,7 @@ let receiveMessage (ws: ClientWebSocket) = task {
     return! read ()
 }
 
-let getImages (webSocket: ClientWebSocket) (workflow: JObject) = task {
-    let runId = Guid.NewGuid().ToString()
-    do! queueWorkflow workflow runId
-
-    let messageStream = asyncSeq {
-        while true do
-            let! msg = receiveMessage webSocket |> Async.AwaitTask
-            match msg with
-            | Some m -> yield JObject.Parse m
-            | None -> ()
-    }
-
+let pollUntilWorkflowComplete webSocket runId = task {
     let runIsExecuting runId (message: JObject) =
         if message.["type"].ToString() = "executing" then
             let data = message.["data"]
@@ -82,12 +71,24 @@ let getImages (webSocket: ClientWebSocket) (workflow: JObject) = task {
                 true
         else
             true
-
+    let messageStream = asyncSeq {
+        while true do
+            let! msg = receiveMessage webSocket |> Async.AwaitTask
+            match msg with
+            | Some m -> yield JObject.Parse m
+            | None -> ()
+    }
     do! 
         messageStream
         |> AsyncSeq.takeWhile (runIsExecuting runId)
         |> AsyncSeq.iter ignore
-        
+}
+
+let getImages (webSocket: ClientWebSocket) (workflow: JObject) = task {
+    let runId = Guid.NewGuid().ToString()
+    do! queueWorkflow workflow runId
+    do! pollUntilWorkflowComplete webSocket runId
+
     let! history = getHistory runId
     let historyData = history.[runId]
     let outputs = historyData.["outputs"] :?> JObject
@@ -271,22 +272,25 @@ let workflowSpec = """
 }
 """
 
-let getSceneDescription (thread : AgentThread) (agent : ChatClientAgent) =
-    let threadCopy = 
-        thread.Serialize()
-        |> agent.DeserializeThread
-    agent.RunAsync($"The previous thread details a dungeons and dragons campaign. Describe the current scene to a high level of precision such that it can be fed directly to an image generator which will illustrate it. It will only have your description to work with, it doesn't have access to the story thread, so include all relevant details. Don't add any reply or commentary, just the scene description.", threadCopy)
-    |> Async.AwaitTask
+let getSceneDescription (thread : AgentThread) = async {
+    let illustratorAgent = Agent.getResponseAgent "" // Doesn't seem to have any effect
+    let threadCopy = thread.Serialize() |> illustratorAgent.DeserializeThread
+    let! response = illustratorAgent.RunAsync($"You are an illustrator agent. You have been provided with a thread detailing a dungeons and dragons campaign and your job is to visualise it. Describe the current scene to a high level of precision such that it can be fed directly to an image generator which will illustrate it. It will only have your description to work with, it doesn't have access to the story thread, so include all relevant details. Don't add any reply or commentary, just the scene description.", threadCopy) |> Async.AwaitTask
+    do! Agent.unloadResponseAgent()
+    return response.Text
+}
 
-let illustrateScene (scenePrompt: string) =
-    let bytes = 
+let illustrateScene (scenePrompt: string) = async {
+    let! allImageBytes = 
         scenePrompt
         |> createWorkflow workflowSpec DateTimeOffset.UtcNow.Ticks
         |> downloadImages
         |> Async.AwaitTask
-        |> Async.RunSynchronously
-        |> Seq.head
+    let firstImageBytes = allImageBytes |> Seq.head
     let path = $"I:\Repos\RPGGen\POC\images\image-{Guid.NewGuid():N}.png"
-    File.WriteAllBytes(path, bytes)
-    ProcessStartInfo(FileName = path, UseShellExecute = true)
-    |> Process.Start
+    File.WriteAllBytes(path, firstImageBytes)
+    return 
+        ProcessStartInfo(FileName = path, UseShellExecute = true)
+        |> Process.Start
+        |> ignore
+}

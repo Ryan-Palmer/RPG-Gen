@@ -2,12 +2,19 @@ module DungeonMaster
 
 open Microsoft.Agents.AI
 
-let initPrompt = "Describe a classic scene from Dungeons and Dragons as if you are the dungeon master talking to the players. Be super creative, let your imagination run wild. Don't describe your personal actions, just your words as the dungeon master."
+let dmInstructions = "" // Don't seem to have any effect
 
-let getInitialScene (thread : AgentThread) (agent : ChatClientAgent) =
-    agent.RunAsync(initPrompt, thread)
-    |> Async.AwaitTask
+let getInitialScene () = async {
+    let dmAgent = Agent.getResponseAgent dmInstructions
+    let storyThread = dmAgent.GetNewThread()
+    let! response = dmAgent.RunAsync("You are a dungeon master talking to the players. Be super creative, let your imagination run wild. It's the start of the adventure. Welcome the players and describe the opening scene. Don't describe your personal actions.", storyThread) |> Async.AwaitTask
+    do! Agent.unloadResponseAgent ()
+    return storyThread, response.Text
+}
 
-let takeTurn (thread : AgentThread) (agent : ChatClientAgent) (userAction : string)=
-    agent.RunAsync($"The players take the following action: {userAction}\n\nAs the dungeon master, describe what happens next. Don't describe your personal actions, just your words as the dungeon master.", thread)
-    |> Async.AwaitTask
+let takeTurn (thread : AgentThread) (userAction : string) = async {
+    let dmAgent = Agent.getResponseAgent dmInstructions
+    let! response = dmAgent.RunAsync($"The players take the following action: {userAction}\n\nWhat happens next?", thread) |> Async.AwaitTask
+    do! Agent.unloadResponseAgent ()
+    return response.Text
+}
