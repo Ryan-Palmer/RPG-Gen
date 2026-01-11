@@ -2,7 +2,7 @@ module DungeonMaster
 
 open Microsoft.Agents.AI
 
-let dmInstructions = "" // Doesn't seem to have any effect
+let dmInstructions = "" // Doesn't work if using Responses API (at least with LM Studio)
 
 let getInitialScene () = async {
     let dmAgent = Agent.getResponseAgent dmInstructions

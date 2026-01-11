@@ -81,3 +81,15 @@ async {
         if verbose then printfn $"Total turn time {turnStopwatch.Elapsed.Seconds} seconds\n\n"
 }
 |> Async.RunSynchronously
+
+// Try Instructions again now using ChatClient instead of Responses
+// Give agents a tool to read World
+(* 
+- DM reads World, creates prose
+- Fact extractor extracts and updates World
+- User acts
+- Rule agent takes world and action and produces result
+- Fact extractor updates world
+- Promt DM with the action and result included in thread
+*)
+// Compact thread with SummarizingChatReducer
