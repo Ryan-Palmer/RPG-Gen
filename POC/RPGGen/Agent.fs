@@ -21,8 +21,8 @@ let unloadResponseAgent () =
     Async.Sleep(1000)
 
 #nowarn 57
-let getResponseAgent instructions = 
+let getResponseAgent instructions tools = 
     storyModel
     //|> chatClient.GetResponsesClient
     |> chatClient.GetChatClient
-    |> _.CreateAIAgent(instructions = instructions, tools = [||])
+    |> _.CreateAIAgent(instructions = instructions, tools = tools)
