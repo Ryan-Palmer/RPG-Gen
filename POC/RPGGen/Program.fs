@@ -1,77 +1,53 @@
 ﻿open System.Diagnostics
 open System
 
-let stopwatch = Stopwatch()
+let turnStopwatch = Stopwatch()
 let verbose = true
 
-let game = async {
-    Console.WriteLine("RPGGen initialising...\n")
+let timedAction f x m = async {
+    let stopwatch = Stopwatch()
     stopwatch.Start()
-    
-    let! storyThread, initialScene = DungeonMaster.getInitialScene ()
-
+    let! result = f x
     stopwatch.Stop()
-    let initTurnSeconds = stopwatch.Elapsed.Seconds
-    if verbose then Console.WriteLine($"Initial scene generated in {initTurnSeconds} seconds\n\n")
-    stopwatch.Reset()
-    stopwatch.Start()
-
-    Console.WriteLine($"{initialScene}\n\nIllustrating...\n")
-    
-    let! initSceneDescription = Illustrator.getSceneDescription storyThread
-    if verbose then Console.WriteLine $"Illustration description:\n\n{initSceneDescription}\n\n"
-
-    stopwatch.Stop()
-    let initSceneDescriptionSeconds = stopwatch.Elapsed.Seconds
-    if verbose then Console.WriteLine($"Illustration description generated in {initSceneDescriptionSeconds} seconds\n\n")
-    stopwatch.Reset()
-    stopwatch.Start()
-
-    do! Illustrator.illustrateScene initSceneDescription
-
-    stopwatch.Stop()
-    let initIllustrationSeconds = stopwatch.Elapsed.Seconds
-    if verbose then Console.WriteLine($"Illustration generated in {initIllustrationSeconds} seconds\n")
-
-    if verbose then Console.WriteLine($"Total init time {initTurnSeconds + initSceneDescriptionSeconds + initIllustrationSeconds} seconds\n\n")
-
-    while true do
-        stopwatch.Reset()
-        stopwatch.Start()
-
-        Console.WriteLine("Enter the players' action:\n")
-        let userAction = Console.ReadLine()
-
-        Console.WriteLine("\n\nGenerating...\n")
-        let! dmResponse = DungeonMaster.takeTurn storyThread userAction
-        
-        stopwatch.Stop()
-        let turnSeconds = stopwatch.Elapsed.Seconds
-        if verbose then Console.WriteLine($"Turn generated in {turnSeconds} seconds\n")
-        stopwatch.Reset()
-        stopwatch.Start()
-
-        Console.WriteLine $"{dmResponse}\n\n\nIllustrating...\n"
-
-        let! sceneDescription = Illustrator.getSceneDescription storyThread
-        if verbose then Console.WriteLine $"Illustration description:\n\n{sceneDescription}\n\n"
-
-        stopwatch.Stop()
-        let sceneDescriptionSeconds = stopwatch.Elapsed.Seconds
-        if verbose then Console.WriteLine($"Illustration description generated in {sceneDescriptionSeconds} seconds\n")
-        stopwatch.Reset()
-        stopwatch.Start()
-
-        do! Illustrator.illustrateScene sceneDescription
-
-        stopwatch.Stop()
-        let illustrationSeconds = stopwatch.Elapsed.Seconds
-        if verbose then Console.WriteLine($"Illustration generated in {illustrationSeconds} seconds\n\n")
-        stopwatch.Reset()
-        stopwatch.Start()
-
-        if verbose then Console.WriteLine($"Total turn time {turnSeconds + sceneDescriptionSeconds + illustrationSeconds} seconds\n\n")
+    if verbose then printfn $"{m} generated in {stopwatch.Elapsed.Seconds} seconds\n\n"
+    return result
 }
 
-game
+async {
+    turnStopwatch.Start()
+
+    printfn "RPGGen initialising...\n"
+
+    let! storyThread, initialScene = timedAction DungeonMaster.getInitialScene () "Initial scene"
+
+    printfn $"{initialScene}\n\nIllustrating...\n"
+    
+    let! initSceneDescription = timedAction Illustrator.getSceneDescription storyThread "Illustration description"    
+    if verbose then printfn $"Illustration description:\n\n{initSceneDescription}\n\n"
+
+    do! timedAction Illustrator.illustrateScene initSceneDescription "Illustration"
+
+    turnStopwatch.Stop()
+    if verbose then printfn $"Total init time {turnStopwatch.Elapsed.Seconds} seconds\n\n"
+
+    while true do
+        turnStopwatch.Reset()
+        turnStopwatch.Start()
+
+        printfn "Enter the players' action:\n"
+        let userAction = Console.ReadLine()
+
+        printfn "\n\nGenerating...\n"
+        let! dmResponse = timedAction (DungeonMaster.takeTurn storyThread) userAction "Turn"
+        
+        printfn $"{dmResponse}\n\n\nIllustrating...\n"
+
+        let! sceneDescription = timedAction Illustrator.getSceneDescription storyThread "Illustration description"
+        if verbose then printfn $"Illustration description:\n\n{sceneDescription}\n\n"
+
+        do! timedAction Illustrator.illustrateScene sceneDescription "Illustration generated"
+
+        turnStopwatch.Stop()
+        if verbose then printfn $"Total turn time {turnStopwatch.Elapsed.Seconds} seconds\n\n"
+}
 |> Async.RunSynchronously
