@@ -2,7 +2,7 @@ module DungeonMaster
 
 open Microsoft.Agents.AI
 
-let dmInstructions = "" // Don't seem to have any effect
+let dmInstructions = "" // Doesn't seem to have any effect
 
 let getInitialScene () = async {
     let dmAgent = Agent.getResponseAgent dmInstructions

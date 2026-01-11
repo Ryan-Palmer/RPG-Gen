@@ -274,7 +274,7 @@ let workflowSpec = """
 
 let getSceneDescription (thread : AgentThread) = async {
     let illustratorAgent = Agent.getResponseAgent "" // Doesn't seem to have any effect
-    let threadCopy = thread.Serialize() |> illustratorAgent.DeserializeThread
+    let threadCopy = Agent.copyThread illustratorAgent thread
     let! response = illustratorAgent.RunAsync($"You are an illustrator agent. You have been provided with a thread detailing a dungeons and dragons campaign and your job is to visualise it. Describe the current scene to a high level of precision such that it can be fed directly to an image generator which will illustrate it. It will only have your description to work with, it doesn't have access to the story thread, so include all relevant details. Don't add any reply or commentary, just the scene description.", threadCopy) |> Async.AwaitTask
     do! Agent.unloadResponseAgent()
     return response.Text
