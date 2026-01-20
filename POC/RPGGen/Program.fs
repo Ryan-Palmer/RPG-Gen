@@ -1,5 +1,6 @@
 ﻿open System.Diagnostics
 open System
+open System.Text.Json
 
 let verbose = true
 
@@ -11,6 +12,12 @@ let timedAction f x m = async {
     if verbose then printfn $"{m} generated in {stopwatch.Elapsed.Seconds} seconds\n\n"
     return result
 }
+
+let printWorldState () =
+    let options = JsonSerializerOptions()
+    options.WriteIndented <- true
+    let worldJson = JsonSerializer.Serialize(World.getWorld(), options)
+    printfn $"\n=== WORLD STATE ===\n{worldJson}\n===================\n"
 
 async {
     let turnStopwatch = Stopwatch()
@@ -24,6 +31,7 @@ async {
     
     printfn "Extracting World state...\n"
     do! timedAction World.extractWorldState storyThread "World state"
+    printWorldState ()
 
     printfn "Illustrating...\n"
     
@@ -42,20 +50,22 @@ async {
         printfn "Enter the players' action:\n"
         let userAction = Console.ReadLine()
 
-        printfn "Applying action...\n"
+        printfn "Applying action to world state...\n"
         let! actionResult = timedAction World.takeAction userAction "Action result"
-        if verbose then printfn $"Action result: {actionResult}"
+        if verbose then printfn $"Action result: {actionResult}\n"
 
-        printfn "\nUpdating World state...\n"
-        do! timedAction (World.updateWorldState userAction) actionResult "Update"
+        printfn "Updating World state...\n"
+        do! timedAction (World.updateWorldState userAction) actionResult "World update"
+        printWorldState ()
 
-        printfn "\n\nGenerating...\n"
+        printfn "Generating narrative...\n"
         let! dmResponse = timedAction (DungeonMaster.takeTurn storyThread userAction) actionResult "Turn"
         
-        printfn $"{dmResponse}\n\n"
+        printfn $"\n=== DM RESPONSE ===\n{dmResponse}\n===================\n\n"
 
-        printfn "Extracting World state...\n"
-        do! timedAction World.extractWorldState storyThread "World state"
+        printfn "Re-extracting World state from narrative...\n"
+        do! timedAction World.extractWorldState storyThread "World extraction"
+        printWorldState ()
 
         printfn "Illustrating...\n"
 

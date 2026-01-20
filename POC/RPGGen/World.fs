@@ -44,13 +44,31 @@ type Flag (
     [<JsonRequired>]member val Description = Description with get, set
     [<JsonRequired>]member val Status = Status with get, set
 
+type Quest (
+    Name : string,
+    Description : string,
+    IsActive : bool) =
+    [<JsonRequired>]member val Name = Name with get, set
+    [<JsonRequired>]member val Description = Description with get, set
+    [<JsonRequired>]member val IsActive = IsActive with get, set
+
 type World (
     CurrentLocation : Location,
     Characters : Character list,
-    Flags : Flag list) =
+    Flags : Flag list,
+    ActiveQuests : Quest list,
+    RecentEvents : string list,
+    SceneNarrative : string,
+    TimeOfDay : string,
+    Weather : string) =
     [<JsonRequired>]member val CurrentLocation = CurrentLocation with get, set
     [<JsonRequired>]member val Characters = Characters with get, set
     [<JsonRequired>]member val Flags = Flags with get, set
+    [<JsonRequired>]member val ActiveQuests = ActiveQuests with get, set
+    [<JsonRequired>]member val RecentEvents = RecentEvents with get, set
+    [<JsonRequired>]member val SceneNarrative = SceneNarrative with get, set
+    [<JsonRequired>]member val TimeOfDay = TimeOfDay with get, set
+    [<JsonRequired>]member val Weather = Weather with get, set
 
 
 let mutable world = Unchecked.defaultof<World>
@@ -58,30 +76,37 @@ let mutable world = Unchecked.defaultof<World>
 let getWorld () =
     world
 
-let getWorldAIFunc = AIFunctionFactory.Create((getWorld : Func<World>), "get_world")
+let getWorldAIFunc = AIFunctionFactory.Create((getWorld : Func<World>), "get_world", "Loads the current canonical world state. This is the source of truth for all facts about the game world. ALWAYS call this first before making any decisions.")
 
 let setWorld newWorld = 
     world <- newWorld
 
-let setWorldAIFunc = AIFunctionFactory.Create((setWorld : Action<World>), "set_world")
+let setWorldAIFunc = AIFunctionFactory.Create((setWorld : Action<World>), "set_world", "Saves the updated world state with all canonical facts.")
 
 let extractWorldState storyThread = async {
     let factAgent = 
         Agent.getResponseAgent """
-            You are a fastidious fact-extracting agent.
+            You are a fact-extracting agent. Your job is simple:
+            1. Read the story thread carefully
+            2. Extract ALL important facts
+            3. Return a complete World object
+            
+            CRITICAL RULES:
+            - An item is EITHER in the environment OR in a character's inventory, NEVER both
+            - Include EVERY character mentioned (player and non-player)
+            - Include EVERY interactable item or environmental detail
+            - Update flags for important story states (doors locked/unlocked, NPCs friendly/hostile, etc.)
+            - Keep RecentEvents to the last 3-5 significant events only
+            - Update SceneNarrative with a brief (2-3 sentences) summary of the current situation
+            - Set TimeOfDay and Weather based on story context
+            
+            Be thorough. Anything you miss is forgotten forever.
         """ [| |]
     let threadCopy = Agent.copyThread factAgent storyThread
     let! worldResponse = 
         factAgent.RunAsync<World>("""
-            You have been provided with a thread of prose detailing a dungeons and dragons style campaign.
-            Your job is to carefully extract all of the hard facts from the prose before returning the canonical world state.
-            This state will be used to make all decisions for the next turn.
-            Be extremely thorough as anything you miss will be forgotten.
-            Include details of every character in the scene, both player and non-player.
-            Include all details of the location, including every detail of the scene and all environmental items that can be interacted with in any way.
-            Remember that an item can EITHER be in the environment OR in a character's inventory, NEVER both.
-            Create and update as many flags as you need to capture only BOOLEAN facts about the scene which might be relevant to the story.
-            Give the flags clear descriptions so that their true / false state makes sense.
+            Extract the complete world state from this story thread.
+            Include all facts about: location, characters, items, quests, flags, recent events, scene narrative, time, and weather.
         """, threadCopy) |> Async.AwaitTask
     setWorld worldResponse.Result
     let path = $"I:\Repos\RPGGen\POC\world.json"
@@ -91,23 +116,29 @@ let extractWorldState storyThread = async {
 let updateWorldState action actionResult = async {
     let factAgent = 
         Agent.getResponseAgent """
-            You are a fastidious fact-extracting agent.
-            You have a get_world tool to load the canonical world state from the previous turn. Do this first.
-            Use your set_world tool to update the world state given the action and consequences.
+            You are a fact-extracting agent.
+            
+            STEP 1: Call get_world to load the current state
+            STEP 2: Apply the action and result to update the state
+            STEP 3: Call set_world with the updated state
+            
+            CRITICAL RULES:
+            - An item is EITHER in the environment OR in a character's inventory, NEVER both
+            - Include EVERY character mentioned (player and non-player)
+            - Include EVERY interactable item or environmental detail
+            - Update flags for important story states
+            - Add the action result to RecentEvents (keep last 3-5 only)
+            - Update SceneNarrative with current situation (2-3 sentences)
+            - Update time/weather if they changed
         """ [| getWorldAIFunc; setWorldAIFunc |]
     let! _ = 
         factAgent.RunAsync($"""
-            The user has taken the following action: {action}\n
-            This had the following consequences: {actionResult}.
-            Get the existing world state using tools, then set the updated state using tools.
-            Your job is to carefully establish all of the hard facts.
-            This state will be used to make all decisions for the next turn.
-            Be extremely thorough as anything you miss will be forgotten.
-            Include details of every character in the scene, both player and non-player.
-            Include all details of the location, including every detail of the scene and all environmental items that can be interacted with in any way.
-            Remember that an item can EITHER be in the environment OR in a character's inventory, NEVER both.
-            Create and update as many flags as you need to capture only BOOLEAN facts about the scene which might be relevant to the story.
-            Give the flags clear descriptions so that their true / false state makes sense.
+            STEP 1: Use get_world tool now
+            STEP 2: Player action: {action}
+            STEP 3: Result: {actionResult}
+            STEP 4: Use set_world tool with updated state
+            
+            Update all relevant fields. Be thorough - missing facts are lost forever.
         """) |> Async.AwaitTask
     let path = $"I:\Repos\RPGGen\POC\world.json"
     File.WriteAllText(path, world |> JsonSerializer.Serialize)
@@ -115,16 +146,23 @@ let updateWorldState action actionResult = async {
 }
 
 let takeAction action = async {
-    let factAgent = 
+    let rulesAgent = 
         Agent.getResponseAgent """
-            You are rule-applying agent who will take a fantasy world state and an action and describe what the consequences are.
-            Do they succeed or fail?
-            How does the world change in response to their action?
+            You are a rules agent for a fantasy RPG.
+            
+            STEP 1: Call get_world to see the current state
+            STEP 2: Decide if the action succeeds, fails, or partially succeeds
+            STEP 3: Describe the consequences clearly
+            
+            Consider: character abilities, environmental factors, item availability, and current flags.
+            Be fair but challenging. Not all actions succeed.
         """ [| getWorldAIFunc |]
 
     let! actionResponse = 
-        factAgent.RunAsync($"""
-            The user takes the following action : {action}
+        rulesAgent.RunAsync($"""
+            STEP 1: Use get_world tool now to load current state
+            STEP 2: Evaluate this action: {action}
+            STEP 3: Describe what happens (success/failure and consequences)
         """) |> Async.AwaitTask
 
     return actionResponse.Text

@@ -273,29 +273,32 @@ let workflowSpec = """
 }
 """
 
-//let getSceneDescription (thread : AgentThread) = async {
-//    let illustratorAgent = Agent.getResponseAgent "You are an illustrator agent." [| getWorldAIFunc |] // Instructions don't work if using Responses API (at least with LM Studio). Also seems to be ignored if other instructions already in thread.
-//    let threadCopy = Agent.copyThread illustratorAgent thread
-//    let! response = 
-//        illustratorAgent.RunAsync($"""
-//            You have been provided with a tool to load the world state of a dungeons and dragons campaign and your job is to visualise it.
-//            Describe the current scene to a high level of precision such that it can be fed directly to an image generator which will illustrate it.
-//            It will only have your description to work with, it doesn't have access to the story thread, so include all relevant details.
-//            Don't add any reply or commentary, just the scene description.
-//        """, threadCopy)
-//        |> Async.AwaitTask
-//    do! Agent.unloadResponseAgent()
-//    return response.Text
-//}
-
 let getSceneDescription () = async {
-    let illustratorAgent = Agent.getResponseAgent "You are an illustrator agent." [| getWorldAIFunc |] // Instructions don't work if using Responses API (at least with LM Studio). Also seems to be ignored if other instructions already in thread.
+    let illustratorAgent = 
+        Agent.getResponseAgent 
+            """
+            You are a scene description agent for an image generator.
+            
+            STEP 1: Call get_world to load the current world state
+            STEP 2: Create a precise visual description for image generation
+            
+            Focus on:
+            - Main subjects (characters) with physical details
+            - Location and environment details
+            - Lighting and atmosphere (use TimeOfDay and Weather)
+            - Composition and perspective
+            
+            Write ONLY the scene description. No commentary, no explanations.
+            Be specific about visual details - the image generator needs precise instructions.
+            """ 
+            [| getWorldAIFunc |]
     let! response = 
-        illustratorAgent.RunAsync($"""
-            You have been provided with a tool to load the world state of a dungeons and dragons campaign and your job is to visualise it.
-            Describe the current scene to a high level of precision such that it can be fed directly to an image generator which will illustrate it.
-            It will only have your description to work with, it doesn't have access to the story thread, so include all relevant details.
-            Don't add any reply or commentary, just the scene description.
+        illustratorAgent.RunAsync("""
+            STEP 1: Use get_world tool now
+            STEP 2: Write a detailed scene description for image generation
+            
+            Include: character appearances, location details, lighting from time/weather, mood/atmosphere.
+            Format: Single paragraph, visual details only, no story elements.
         """)
         |> Async.AwaitTask
     do! Agent.unloadResponseAgent()
