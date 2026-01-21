@@ -6,6 +6,7 @@
   </PropertyGroup>
   <ItemGroup>
     <None Include="paket.references" />
+    <Compile Include="ConsoleOutput.fs" />
     <Compile Include="Process.fs" />
     <Compile Include="Agent.fs" />
     <Compile Include="World.fs" />

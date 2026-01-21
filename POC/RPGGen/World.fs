@@ -74,13 +74,13 @@ type World (
 let mutable world = Unchecked.defaultof<World>
 
 let getWorld () =
-    printfn " *** Loading world state ***\n"
+    ConsoleOutput.printWorldStateOperation " *** Loading world state ***\n"
     world
 
 let getWorldAIFunc = AIFunctionFactory.Create((getWorld : Func<World>), "get_world", "Loads the current canonical world state. This is the source of truth for all facts about the game world. ALWAYS call this first before making any decisions.")
 
 let setWorld newWorld =
-    printfn " *** Saving world state ***\n"
+    ConsoleOutput.printWorldStateOperation " *** Saving world state ***\n"
     world <- newWorld
 
 let setWorldAIFunc = AIFunctionFactory.Create((setWorld : Action<World>), "set_world", "Saves the updated world state with all canonical facts.")

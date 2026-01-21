@@ -48,7 +48,7 @@ let getInitialScene (characters: Character list) = async {
     
     let! response = 
         dmAgent.RunAsync($"""
-            Start a new fantasy adventure with these characters:
+            Start a new fantasy adventure with these Player characters:
             
             {characterDescriptions}
             
