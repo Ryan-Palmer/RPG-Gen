@@ -19,14 +19,37 @@ let printWorldState () =
     let worldJson = JsonSerializer.Serialize(World.world, options)
     printfn $"\n=== WORLD STATE ===\n{worldJson}\n===================\n"
 
+let getPlayerCharacters () =
+    printfn "Welcome to RPGGen\n"
+    printfn "Let's design your characters!\n"
+    
+    let rec getCharacterList acc =
+        printfn "Enter character name (or press Enter to finish):"
+        let name = Console.ReadLine()
+        if String.IsNullOrWhiteSpace(name) then
+            acc
+        else
+            printfn $"\nEnter description for {name}:"
+            let description = Console.ReadLine()
+            let character = World.Character(World.CharacterType.PC, name, description, "Healthy", [])
+            printfn $"\nAdded {name} to the party!\n"
+            getCharacterList (character :: acc)
+    
+    let characters = getCharacterList []
+    if List.isEmpty characters then
+        printfn "No characters created. Creating a default character...\n"
+        [World.Character(World.CharacterType.PC, "Adventurer", "A brave hero ready for adventure", "Healthy", [])]
+    else
+        List.rev characters
+
 async {
     let turnStopwatch = Stopwatch()
     turnStopwatch.Start()
 
-    printfn "Welcome to RPGGen\n"
-
+    let playerCharacters = getPlayerCharacters ()
+    
     printfn "Initialising scene...\n"
-    let! storyThread, initialScene = timedAction DungeonMaster.getInitialScene () "Initial scene"
+    let! storyThread, initialScene = timedAction DungeonMaster.getInitialScene playerCharacters "Initial scene"
     printfn $"{initialScene}\n"
     
     printfn "Initialising World state...\n"    

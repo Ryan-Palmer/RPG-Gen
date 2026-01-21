@@ -128,6 +128,7 @@ let applyNarrative narrativeUpdate = async {
             - PRESERVE all existing facts unless explicitly contradicted
             - ADD new information from the DM's narrative
             - UPDATE changed facts (character status, item locations, flags, etc.)
+            - DO NOT UPDATE the character's type, name or description, those fields are immutable.
             - An item is EITHER in the environment OR in a character's inventory, NEVER both
             - Add significant events to RecentEvents (keep last 3-5 only)
             - Update SceneNarrative with current situation (2-3 sentences)

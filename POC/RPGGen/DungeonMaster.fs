@@ -24,7 +24,7 @@ let dmInstructions = """
     - End with what the players see/hear/feel now
 """ // Doesn't work if using Responses API (at least with LM Studio)
 
-let getInitialScene () = async {
+let getInitialScene (characters: Character list) = async {
     let initialSceneInstructions = """
         You are the Dungeon Master for a fantasy RPG adventure.
 
@@ -40,11 +40,19 @@ let getInitialScene () = async {
     """
     let dmAgent = Agent.getResponseAgent initialSceneInstructions [| |]
     let storyThread = dmAgent.GetNewThread()
+    
+    let characterDescriptions = 
+        characters
+        |> List.map (fun c -> $"- {c.Name}: {c.Description}")
+        |> String.concat "\n"
+    
     let! response = 
-        dmAgent.RunAsync("""
-            Start a new fantasy adventure.
+        dmAgent.RunAsync($"""
+            Start a new fantasy adventure with these characters:
             
-            STEP 1: Welcome the players
+            {characterDescriptions}
+            
+            STEP 1: Welcome the players and acknowledge their characters
             STEP 2: Describe the opening scene with rich sensory details
             STEP 3: Present an interesting situation or choice
             
