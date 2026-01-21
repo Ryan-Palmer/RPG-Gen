@@ -85,7 +85,7 @@ let setWorld newWorld =
 
 let setWorldAIFunc = AIFunctionFactory.Create((setWorld : Action<World>), "set_world", "Saves the updated world state with all canonical facts.")
 
-let extractWorldState storyThread = async {
+let initWorldState storyThread = async {
     let factAgent = 
         Agent.getResponseAgent """
             You are a fact-extracting agent. Your job is simple:
@@ -110,15 +110,49 @@ let extractWorldState storyThread = async {
             Extract the complete world state from this story thread.
             Include all facts about: location, characters, items, quests, flags, recent events, scene narrative, time, and weather.
         """, threadCopy) |> Async.AwaitTask
-    setWorld worldResponse.Result
-    let path = $"I:\Repos\RPGGen\POC\world.json"
-    File.WriteAllText(path, worldResponse.Result |> JsonSerializer.Serialize)
+    return setWorld worldResponse.Result
 }
 
-let updateWorldState action actionResult = async {
+let applyNarrative narrativeUpdate = async {
     let factAgent = 
         Agent.getResponseAgent """
-            You are a fact-extracting agent.
+            You are a world state evolution agent.
+            
+            STEP 1: Call get_world to load the current canonical state
+            STEP 2: Read the DM's narrative response
+            STEP 3: Evolve the world state based on new information
+            STEP 4: Call set_world with the evolved state
+            
+            CRITICAL RULES:
+            - START with current world state (via get_world)
+            - PRESERVE all existing facts unless explicitly contradicted
+            - ADD new information from the DM's narrative
+            - UPDATE changed facts (character status, item locations, flags, etc.)
+            - An item is EITHER in the environment OR in a character's inventory, NEVER both
+            - Add significant events to RecentEvents (keep last 3-5 only)
+            - Update SceneNarrative with current situation (2-3 sentences)
+            - Update time/weather only if they changed in the narrative
+            
+            This is incremental evolution, not full extraction. Keep what's there, add what's new.
+        """ [| getWorldAIFunc; setWorldAIFunc |]
+    return! 
+        factAgent.RunAsync($"""
+            STEP 1: Use get_world tool NOW to load current state
+            STEP 2: Read this DM narrative: {narrativeUpdate}
+            STEP 3: Evolve the world state with new/changed information
+            STEP 4: Use set_world tool with evolved state
+            
+            Preserve existing facts. Only add/update what changed in the narrative.
+            Be thorough with new information - missing facts are lost forever.
+        """)
+        |> Async.AwaitTask
+        |> Async.Ignore
+}
+
+let applyAction action actionResult = async {
+    let factAgent = 
+        Agent.getResponseAgent """
+            You are an action-applying agent.
             
             STEP 1: Call get_world to load the current state
             STEP 2: Apply the action and result to update the state
@@ -157,6 +191,7 @@ let takeAction action = async {
             
             Consider: character abilities, environmental factors, item availability, and current flags.
             Be fair but challenging. Not all actions succeed.
+            Your job is not to embellish the narrative, but rather to describe what happens so that the DM can continue the story.
         """ [| getWorldAIFunc |]
 
     let! actionResponse = 

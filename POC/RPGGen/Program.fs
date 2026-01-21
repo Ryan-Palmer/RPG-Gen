@@ -9,7 +9,7 @@ let timedAction f x m = async {
     stopwatch.Start()
     let! result = f x
     stopwatch.Stop()
-    if verbose then printfn $"{m} generated in {stopwatch.Elapsed.Seconds} seconds\n\n"
+    if verbose then printfn $"{m} generated in {stopwatch.Elapsed.Seconds} seconds\n"
     return result
 }
 
@@ -23,25 +23,23 @@ async {
     let turnStopwatch = Stopwatch()
     turnStopwatch.Start()
 
-    printfn "RPGGen initialising...\n"
+    printfn "Welcome to RPGGen\n"
 
+    printfn "Initialising scene...\n"
     let! storyThread, initialScene = timedAction DungeonMaster.getInitialScene () "Initial scene"
-
-    printfn $"{initialScene}\n\n"
+    printfn $"{initialScene}\n"
     
-    printfn "Extracting World state...\n"
-    do! timedAction World.extractWorldState storyThread "World state"
-    printWorldState ()
+    printfn "Initialising World state...\n"    
+    do! timedAction World.initWorldState storyThread "World state"
+    if verbose then printWorldState ()
 
     printfn "Illustrating...\n"
-    
     let! initSceneDescription = timedAction Illustrator.getSceneDescription () "Illustration description"    
-    if verbose then printfn $"Illustration description:\n\n{initSceneDescription}\n\n"
-
+    if verbose then printfn $"Illustration description:\n{initSceneDescription}\n"
     do! timedAction Illustrator.illustrateScene initSceneDescription "Illustration"
 
     turnStopwatch.Stop()
-    if verbose then printfn $"Total init time {turnStopwatch.Elapsed.Seconds} seconds\n\n"
+    if verbose then printfn $"Total init time {turnStopwatch.Elapsed.Seconds} seconds\n"
 
     while true do
         turnStopwatch.Reset()
@@ -50,32 +48,29 @@ async {
         printfn "Enter the players' action:\n"
         let userAction = Console.ReadLine()
 
-        printfn "\nApplying action to world state...\n"
+        printfn "\nGetting action result...\n"
         let! actionResult = timedAction World.takeAction userAction "Action result"
         if verbose then printfn $"Action result: {actionResult}\n"
 
         printfn "Updating World state...\n"
-        do! timedAction (World.updateWorldState userAction) actionResult "World update"
-        printWorldState ()
+        do! timedAction (World.applyAction userAction) actionResult "World update"
+        if verbose then printWorldState ()
 
         printfn "Generating narrative...\n"
         let! dmResponse = timedAction (DungeonMaster.takeTurn storyThread userAction) actionResult "Turn"
-        
-        printfn $"\n=== DM RESPONSE ===\n{dmResponse}\n===================\n\n"
+        printfn $"\n=== DM RESPONSE ===\n{dmResponse}\n===================\n"
 
-        printfn "Re-extracting World state from narrative...\n"
-        do! timedAction World.extractWorldState storyThread "World extraction"
-        printWorldState ()
+        printfn "Evolving World state from narrative...\n"
+        do! timedAction World.applyNarrative dmResponse "World evolution"
+        if verbose then printWorldState ()
 
         printfn "Illustrating...\n"
-
         let! sceneDescription = timedAction Illustrator.getSceneDescription () "Illustration description"
-        if verbose then printfn $"Illustration description:\n\n{sceneDescription}\n\n"
-
+        if verbose then printfn $"Illustration description:\n\n{sceneDescription}\n"
         do! timedAction Illustrator.illustrateScene sceneDescription "Illustration"
 
         turnStopwatch.Stop()
-        if verbose then printfn $"Total turn time {turnStopwatch.Elapsed.Seconds} seconds\n\n"
+        if verbose then printfn $"Total turn time {turnStopwatch.Elapsed.Seconds} seconds\n"
 }
 |> Async.RunSynchronously
 
