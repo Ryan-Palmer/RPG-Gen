@@ -80,7 +80,7 @@ async {
         if verbose then printWorldState ()
 
         ConsoleOutput.printSystemMessage "Generating narrative...\n"
-        let! dmResponse = timedAction (DungeonMaster.takeTurn storyThread userAction) actionResult "Turn"
+        let! dmResponse = timedAction (DungeonMaster.takeTurn userAction) actionResult "Turn"
         ConsoleOutput.printDmDialogue $"\n=== DM RESPONSE ===\n{dmResponse}\n===================\n"
 
         ConsoleOutput.printSystemMessage "Evolving World state from narrative...\n"

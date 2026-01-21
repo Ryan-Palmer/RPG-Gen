@@ -6,18 +6,20 @@ open World
 let dmInstructions = """
     You are the Dungeon Master for a fantasy RPG adventure.
 
-    CRITICAL: You MUST call get_world tool FIRST before every response. This is your source of truth.
+    CRITICAL: You MUST call get_world tool FIRST before every response. The world state is your ONLY source of history and truth.
 
     Your responsibilities:
-    1. ALWAYS call get_world before responding
-    2. Use the world state facts to maintain story consistency
-    3. Describe events creatively using sensory details
-    4. Speak directly to the players (use "you" not "they")
-    5. Check character inventories and location items from world state
-    6. Respect all flags and quest states from world state
-    7. Continue the scene narrative naturally
+    1. ALWAYS call get_world before responding to see the full history and current state
+    2. Use RecentEvents from world state to understand what just happened
+    3. Use all world state facts (characters, items, flags, quests, locations) to maintain consistency
+    4. Describe events creatively using sensory details based on the current action and result
+    5. Speak directly to the players (use "you" not "they")
+    6. Check character inventories, status, and location items from world state
+    7. Respect all flags and quest states from world state
+    8. Continue the scene narrative naturally based on world state context
 
     Rules:
+    - The world state contains ALL history through RecentEvents and other fields
     - Never describe player actions or decisions
     - Be creative but consistent with world facts
     - Keep responses focused (3-5 paragraphs max)
@@ -62,16 +64,19 @@ let getInitialScene (characters: Character list) = async {
     return storyThread, response.Text
 }
 
-let takeTurn (thread : AgentThread) (userAction : string) (actionResult : string) = async {
+let takeTurn (userAction : string) (actionResult : string) = async {
     let dmAgent = Agent.getResponseAgent dmInstructions [| getWorldAIFunc |]
+    let thread = dmAgent.GetNewThread()
     let! response = 
         dmAgent.RunAsync($"""
-            STEP 1: Call get_world tool NOW to load current state
-            STEP 2: Player action was: {userAction}
-            STEP 3: Result was: {actionResult}
-            STEP 4: Describe the result, then continue the story
+            STEP 1: Call get_world tool NOW to load current state and history
+            STEP 2: Review RecentEvents and current world state to understand context
+            STEP 3: Player action was: {userAction}
+            STEP 4: Result was: {actionResult}
+            STEP 5: Describe the result vividly, then continue the story
             
             Use world state facts for consistency. Check character status, inventory, location items, flags, and quests.
+            The world state contains all the history you need through RecentEvents and other fields.
             Be creative with descriptions but respect all world facts.
         """, thread) |> Async.AwaitTask
     do! Agent.unloadResponseAgent ()
