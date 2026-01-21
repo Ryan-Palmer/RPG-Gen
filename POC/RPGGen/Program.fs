@@ -16,7 +16,7 @@ let timedAction f x m = async {
 let printWorldState () =
     let options = JsonSerializerOptions()
     options.WriteIndented <- true
-    let worldJson = JsonSerializer.Serialize(World.getWorld(), options)
+    let worldJson = JsonSerializer.Serialize(World.world, options)
     printfn $"\n=== WORLD STATE ===\n{worldJson}\n===================\n"
 
 async {
@@ -50,7 +50,7 @@ async {
         printfn "Enter the players' action:\n"
         let userAction = Console.ReadLine()
 
-        printfn "Applying action to world state...\n"
+        printfn "\nApplying action to world state...\n"
         let! actionResult = timedAction World.takeAction userAction "Action result"
         if verbose then printfn $"Action result: {actionResult}\n"
 

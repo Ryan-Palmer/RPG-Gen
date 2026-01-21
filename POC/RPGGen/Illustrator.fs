@@ -280,28 +280,57 @@ let getSceneDescription () = async {
             You are a scene description agent for an image generator.
             
             STEP 1: Call get_world to load the current world state
-            STEP 2: Create a precise visual description for image generation
+            STEP 2: Create a structured prompt in markdown format
             
-            Focus on:
-            - Main subjects (characters) with physical details
-            - Location and environment details
-            - Lighting and atmosphere (use TimeOfDay and Weather)
-            - Composition and perspective
+            Your prompt MUST include these sections:
             
-            Write ONLY the scene description. No commentary, no explanations.
-            Be specific about visual details - the image generator needs precise instructions.
+            ## Scene
+            - Main subject(s) with detailed physical descriptions
+            - Key environmental elements from the current location
+            - Important items visible in the scene
+            - Character positions and interactions
+            
+            ## Atmosphere & Lighting
+            - Time of day effects on lighting
+            - Weather conditions and their visual impact
+            - Mood and emotional tone
+            - Color temperature (warm/cool)
+            
+            ## Style & Aesthetic
+            - Art style (e.g., fantasy illustration, painterly, digital art)
+            - Level of realism (photorealistic, stylized, etc.)
+            - Color palette (rich/muted, vibrant/subdued, dominant colors)
+            - Artistic influences or references
+            
+            ## Composition
+            - Camera angle/perspective
+            - Focal point
+            - Depth and spatial relationships
+            
+            Be specific and detailed. Extract ALL relevant visual information from world state.
+            Write naturally but cover all sections. Use the markdown structure shown above.
             """ 
             [| getWorldAIFunc |]
+
     let! response = 
         illustratorAgent.RunAsync("""
-            STEP 1: Use get_world tool now
-            STEP 2: Write a detailed scene description for image generation
+            STEP 1: Use get_world tool NOW to load current state
+            STEP 2: Create a comprehensive, structured scene description in markdown
             
-            Include: character appearances, location details, lighting from time/weather, mood/atmosphere.
-            Format: Single paragraph, visual details only, no story elements.
+            Extract from world state:
+            - Character appearances, clothing, equipment from inventories
+            - Location description and visible items
+            - TimeOfDay for lighting effects
+            - Weather for atmospheric conditions
+            - RecentEvents to understand current action/situation
+            
+            Include all four sections: Scene, Atmosphere & Lighting, Style & Aesthetic, Composition.
+            Be thorough - missing visual details result in poor illustrations.
         """)
         |> Async.AwaitTask
+
     do! Agent.unloadResponseAgent()
+    
     return response.Text
 }
 

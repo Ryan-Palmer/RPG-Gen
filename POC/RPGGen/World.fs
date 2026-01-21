@@ -74,11 +74,13 @@ type World (
 let mutable world = Unchecked.defaultof<World>
 
 let getWorld () =
+    printfn " *** Loading world state ***\n"
     world
 
 let getWorldAIFunc = AIFunctionFactory.Create((getWorld : Func<World>), "get_world", "Loads the current canonical world state. This is the source of truth for all facts about the game world. ALWAYS call this first before making any decisions.")
 
-let setWorld newWorld = 
+let setWorld newWorld =
+    printfn " *** Saving world state ***\n"
     world <- newWorld
 
 let setWorldAIFunc = AIFunctionFactory.Create((setWorld : Action<World>), "set_world", "Saves the updated world state with all canonical facts.")
@@ -131,7 +133,7 @@ let updateWorldState action actionResult = async {
             - Update SceneNarrative with current situation (2-3 sentences)
             - Update time/weather if they changed
         """ [| getWorldAIFunc; setWorldAIFunc |]
-    let! _ = 
+    return! 
         factAgent.RunAsync($"""
             STEP 1: Use get_world tool now
             STEP 2: Player action: {action}
@@ -139,10 +141,9 @@ let updateWorldState action actionResult = async {
             STEP 4: Use set_world tool with updated state
             
             Update all relevant fields. Be thorough - missing facts are lost forever.
-        """) |> Async.AwaitTask
-    let path = $"I:\Repos\RPGGen\POC\world.json"
-    File.WriteAllText(path, world |> JsonSerializer.Serialize)
-    return ()
+        """)
+        |> Async.AwaitTask
+        |> Async.Ignore
 }
 
 let takeAction action = async {
